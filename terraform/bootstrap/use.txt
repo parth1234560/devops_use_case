@@ -1,0 +1,32 @@
+Think of it like this:
+
+Your laptop ──────┐
+                  │
+                  ↓
+             S3 Bucket
+          terraform.tfstate
+                  ↑
+                  │
+Palak's laptop ───┘
+
+Both of you use the same state.
+
+And DynamoDB works like a lock:
+
+You run terraform apply
+        ↓
+DynamoDB says:
+"Terraform is currently locked by Parth"
+
+Palak runs terraform apply
+        ↓
+Terraform waits / refuses
+
+This prevents two people changing infrastructure simultaneously.
+
+Because the S3 bucket must exist before Terraform can use it as a backend.
+
+So bootstrap is a small Terraform project whose only job is:
+
+create S3 bucket
+create DynamoDB table
