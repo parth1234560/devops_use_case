@@ -286,7 +286,8 @@ resource "aws_iam_role_policy" "codepipeline" {
 
         Action = [
           "codebuild:StartBuild",
-          "codebuild:BatchGetBuilds"
+          "codebuild:BatchGetBuilds",
+          "codebuild:GetDeploymentConfig"
         ]
 
         Resource = "*"
