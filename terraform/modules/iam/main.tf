@@ -288,6 +288,7 @@ resource "aws_iam_role_policy" "codepipeline" {
           "codebuild:StartBuild",
           "codebuild:BatchGetBuilds",
           "codebuild:GetDeploymentConfig"
+          
         ]
 
         Resource = "*"
@@ -301,6 +302,7 @@ resource "aws_iam_role_policy" "codepipeline" {
           "codedeploy:GetDeployment",
           "codedeploy:GetApplication",
           "codedeploy:GetApplicationRevision",
+          "codedeploy:GetDeploymentConfig",
           "codedeploy:RegisterApplicationRevision"
         ]
 
