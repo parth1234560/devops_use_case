@@ -22,10 +22,18 @@ output "rds_sg_id" {
   value = module.networking.rds_sg_id
 }
 //iam outputs
-output "instance_profile_arn" {
-  value = module.iam.instance_profile_arn
+output "ec2_instance_profile_name" {
+  value = module.iam.ec2_instance_profile_name
 }
 
-output "instance_profile_name" {
-  value = module.iam.instance_profile_name
+output "codebuild_role_arn" {
+  value = module.iam.codebuild_role_arn
+}
+
+output "codedeploy_role_arn" {
+  value = module.iam.codedeploy_role_arn
+}
+
+output "codepipeline_role_arn" {
+  value = module.iam.codepipeline_role_arn
 }

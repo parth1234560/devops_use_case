@@ -16,3 +16,9 @@ private_subnet_cidrs = [
 
 app_port = 8080
 db_port  = 3306
+alarm_email = "pathakparthixc7503@gmail.com"
+github_connection_arn = "arn:aws:codestar-connections:ap-south-1:YOUR_ACCOUNT_ID:connection/YOUR_CONNECTION_ID"
+
+github_repository = "YOUR_GITHUB_USERNAME/devops_use_case"
+
+github_branch = "main"

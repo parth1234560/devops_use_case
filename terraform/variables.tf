@@ -38,3 +38,21 @@ variable "db_port" {
   type    = number
   default = 3306
 }
+variable "alarm_email" {
+  type        = string
+  description = "Email address for CloudWatch alarm notifications"
+}
+variable "github_connection_arn" {
+  type        = string
+  description = "AWS CodeConnections ARN for GitHub"
+}
+
+variable "github_repository" {
+  type        = string
+  description = "GitHub repository in owner/repository format"
+}
+
+variable "github_branch" {
+  type    = string
+  default = "main"
+}
