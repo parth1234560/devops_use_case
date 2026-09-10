@@ -1,0 +1,407 @@
+AWS High Availability Web Application Project
+============================================
+
+Project Owner Context
+---------------------
+Parth initially owned networking, security, IAM, and CI/CD. Palak was supposed to own compute, load balancing, database, DNS, monitoring, and testing, but Parth now needs to complete the full project.
+
+Project Goal
+------------
+Build a highly available AWS application infrastructure using Terraform. The infrastructure should run an application across multiple Availability Zones, expose it through an Application Load Balancer, keep application servers private, use a managed Multi-AZ database, automate deployments with CI/CD, and prove reliability through failure testing.
+
+High-Level Architecture
+-----------------------
+User -> Route 53 domain -> Application Load Balancer in public subnets -> EC2 instances in private subnets managed by Auto Scaling Group -> RDS database in private subnets.
+
+Supporting services:
+- S3 remote backend for Terraform state.
+- Terraform lock support to avoid concurrent state corruption.
+- IAM roles and instance profiles for EC2, CodeBuild, CodeDeploy, and CodePipeline.
+- CodePipeline for source, build, and deploy stages.
+- CodeBuild for building/testing application code.
+- CodeDeploy for blue-green deployment to the Auto Scaling Group through the ALB.
+- CloudWatch for logs, metrics, alarms, scaling signals, and deployment rollback alarms.
+
+Current Repo Status Checked
+---------------------------
+Existing files:
+- terraform/backend.tf
+- terraform/main.tf
+- terraform/variables.tf
+- terraform/outputs.tf
+- terraform/terraform.tfvars.example
+- terraform/modules/networking/main.tf
+- terraform/modules/networking/outputs.tf
+- terraform/modules/networking/security_group.tf
+- terraform/modules/networking/variables.tf
+- terraform/modules/iam/main.tf
+- terraform/modules/iam/outputs.tf
+- terraform/modules/iam/variables.tf
+- terraform/bootstrap/main.tf
+
+Current completed work:
+- Base Terraform repo structure exists.
+- S3 backend bucket bootstrap code exists.
+- Root backend configuration exists.
+- .gitignore exists under terraform and ignores .terraform, tfstate, tfvars, and crash logs.
+- terraform.tfvars.example exists with placeholder/default values.
+- Networking module exists.
+- VPC exists.
+- Two public subnets are configured.
+- Two private subnets are configured.
+- Internet Gateway exists.
+- One NAT Gateway exists in the first public subnet.
+- Public route table routes internet traffic to the Internet Gateway.
+- Private route table routes outbound traffic to the NAT Gateway.
+- ALB, EC2, and RDS security groups exist.
+- ALB security group allows HTTP/HTTPS from the internet.
+- EC2 security group allows only application traffic from ALB security group.
+- RDS security group allows only DB traffic from EC2 security group.
+- Networking outputs exist for VPC ID, subnet IDs, and security group IDs.
+- IAM module exists with an EC2 IAM role and EC2 instance profile.
+- Root outputs expose the instance profile ARN and name.
+- terraform fmt -check -recursive passed.
+- terraform validate passed.
+
+Important incomplete or partial work:
+- IAM Task 3 is only partially complete. EC2 role and instance profile exist, but permissions are not attached yet.
+- CodePipeline, CodeBuild, CodeDeploy service roles are not created yet.
+- modules/compute does not exist yet.
+- ALB resources do not exist yet. Only ALB security group exists.
+- ASG and Launch Template do not exist yet.
+- modules/database does not exist yet.
+- RDS Multi-AZ is not created yet.
+- Route 53 is not created yet.
+- CloudWatch alarms and log groups are not created yet.
+- modules/cicd does not exist yet.
+- buildspec.yml and appspec.yml are not present.
+- End-to-end deployment and failure testing are not done yet.
+
+Recommended Completion Order
+----------------------------
+1. Clean up and finalize Terraform foundation.
+2. Finish IAM permissions and service roles.
+3. Create compute module with Launch Template, ALB, Target Group, Listener, and ASG.
+4. Create database module with DB subnet group, RDS Multi-AZ, and secure credentials.
+5. Add CloudWatch logs and alarms.
+6. Add Route 53 DNS alias to ALB.
+7. Add CI/CD module with CodePipeline, CodeBuild, CodeDeploy, blue-green deployment, and rollback.
+8. Add application deployment files such as buildspec.yml and appspec.yml.
+9. Run terraform plan/apply in stages.
+10. Perform failure testing and collect screenshots.
+11. Prepare final documentation and interview explanation.
+
+Detailed Remaining Steps
+------------------------
+
+Step A: Terraform Foundation Cleanup
+1. Add a provider block in terraform/main.tf or a separate provider.tf:
+   provider "aws" {
+     region = var.aws_region
+   }
+2. Add required_providers if desired for clarity:
+   terraform {
+     required_providers {
+       aws = {
+         source  = "hashicorp/aws"
+         version = "~> 6.0"
+       }
+     }
+   }
+3. Decide whether to use S3 native lockfile only or DynamoDB locking. Current backend uses use_lockfile = true but the original task mentioned DynamoDB.
+4. If using DynamoDB, create a lock table in bootstrap and add dynamodb_table to backend configuration.
+5. Keep real terraform.tfvars uncommitted.
+6. Keep .terraform and tfstate files uncommitted.
+
+Step B: Finish IAM
+1. Attach AWS managed policy CloudWatchAgentServerPolicy to EC2 role.
+2. Attach AmazonSSMManagedInstanceCore to EC2 role so private EC2 instances can be managed without SSH.
+3. Add least-privilege S3 access if the app needs S3.
+4. Add permissions needed by the CodeDeploy agent if using CodeDeploy on EC2.
+5. Create CodeBuild service role with CloudWatch Logs and artifact bucket read/write permissions.
+6. Create CodePipeline service role with permissions to use source connection, artifact bucket, CodeBuild, and CodeDeploy.
+7. Create CodeDeploy service role with permissions for EC2, ASG, ELB, and lifecycle operations.
+8. Output role ARNs and names required by other modules.
+
+Step C: Create Compute Module
+Create terraform/modules/compute with:
+- variables.tf
+- main.tf
+- alb.tf if splitting files
+- outputs.tf
+
+Inputs needed:
+- project_name
+- vpc_id
+- public_subnet_ids
+- private_subnet_ids
+- alb_sg_id
+- ec2_sg_id
+- instance_profile_name
+- app_port
+- instance_type
+- ami_id
+- desired_capacity
+- min_size
+- max_size
+
+Resources to create:
+1. aws_lb for Application Load Balancer.
+2. aws_lb_target_group for app instances.
+3. aws_lb_listener on port 80.
+4. Optional HTTPS listener on 443 after ACM certificate is available.
+5. aws_launch_template with AMI, instance type, security group, IAM instance profile, and user_data.
+6. aws_autoscaling_group across both private subnets.
+7. Attach ASG to target group.
+8. Configure ASG health checks to use ELB health checks.
+9. Add tags for Project and Name.
+
+Outputs:
+- alb_dns_name
+- alb_zone_id
+- target_group_arn
+- listener_arn
+- asg_name
+- launch_template_id
+
+Step D: Create Database Module
+Create terraform/modules/database with:
+- variables.tf
+- main.tf
+- outputs.tf
+
+Inputs:
+- project_name
+- private_subnet_ids
+- rds_sg_id
+- db_engine
+- db_instance_class
+- db_name
+- db_username
+- db_password or secret reference
+
+Resources:
+1. aws_db_subnet_group using private subnets.
+2. aws_db_instance with multi_az = true.
+3. storage_encrypted = true.
+4. publicly_accessible = false.
+5. backup_retention_period enabled.
+6. deletion protection for production-like setup.
+7. Store DB credentials in AWS Secrets Manager or SSM Parameter Store instead of hardcoding.
+
+Outputs:
+- rds_endpoint
+- rds_port
+- db_secret_arn if using Secrets Manager.
+
+Step E: Add Monitoring and Logs
+1. Create CloudWatch log group for application logs.
+2. Install/configure CloudWatch agent in EC2 user data.
+3. Add ASG CPU alarms:
+   - High CPU alarm for scale out.
+   - Low CPU alarm for scale in.
+4. Add target group unhealthy host alarm.
+5. Add ALB 5xx alarm.
+6. Add CodeDeploy deployment failure alarm.
+7. Connect deployment failure alarm to CodeDeploy auto rollback.
+
+Step F: Add Route 53
+1. Use an existing hosted zone or create one.
+2. Create Route 53 A record alias to ALB.
+3. Use ALB DNS name and ALB zone ID from compute outputs.
+4. If HTTPS is required, create ACM certificate and validate it through DNS.
+5. Add HTTPS listener after certificate is issued.
+
+Step G: Create CI/CD Module
+Create terraform/modules/cicd with:
+- variables.tf
+- main.tf
+- outputs.tf
+
+Resources:
+1. S3 artifact bucket for pipeline artifacts.
+2. CodeBuild project.
+3. CodeDeploy application.
+4. CodeDeploy deployment group.
+5. CodePipeline with stages:
+   - Source: GitHub through CodeStar connection or supported source.
+   - Build: CodeBuild.
+   - Deploy: CodeDeploy.
+6. Blue-green deployment config:
+   - Deployment group references ASG.
+   - Deployment group references ALB target group/listener.
+   - Auto rollback enabled for deployment failure and alarm.
+   - Terminate old blue instances after bake time.
+
+Files needed in app repo:
+- buildspec.yml for CodeBuild.
+- appspec.yml for CodeDeploy.
+- deployment scripts if needed, such as install, start, stop, validate service.
+
+Step H: Terraform Execution Flow
+1. cd terraform
+2. terraform init
+3. terraform fmt -recursive
+4. terraform validate
+5. terraform plan -out tfplan
+6. terraform apply tfplan
+7. Check outputs:
+   - vpc_id
+   - public_subnet_ids
+   - private_subnet_ids
+   - alb_sg_id
+   - ec2_sg_id
+   - rds_sg_id
+   - instance_profile_name
+   - alb_dns_name
+   - asg_name
+   - target_group_arn
+   - rds_endpoint
+
+Step I: Testing Plan
+1. Open ALB DNS name and verify the app responds.
+2. Check target group health; all instances should become healthy.
+3. Terminate one EC2 instance manually; ASG should replace it.
+4. Stop or terminate instances in one AZ; ALB should keep serving traffic through the other AZ.
+5. Push a valid app commit; CodePipeline should build and deploy.
+6. Push a bad deployment that fails health check; CodeDeploy should rollback.
+7. Check CloudWatch alarms and logs.
+8. Capture screenshots:
+   - VPC subnets and route tables.
+   - Security groups.
+   - ALB listener and target group health.
+   - ASG desired/min/max and instances.
+   - RDS Multi-AZ setting.
+   - CodePipeline successful run.
+   - CodeDeploy blue-green deployment.
+   - CloudWatch alarms.
+
+Interview Explanation
+---------------------
+
+Short project intro:
+"This project provisions a highly available AWS web application infrastructure using Terraform. It uses a custom VPC across two Availability Zones, public subnets for the Application Load Balancer and NAT Gateway, private subnets for EC2 and RDS, security groups with least-privilege traffic flow, Auto Scaling for EC2, Multi-AZ RDS for database availability, and a CI/CD pipeline using CodePipeline, CodeBuild, and CodeDeploy blue-green deployments."
+
+Why VPC:
+A VPC gives isolated networking control. We define CIDR, subnets, route tables, gateways, and security boundaries instead of using default networking.
+
+Why public and private subnets:
+Public subnets host internet-facing resources like ALB and NAT Gateway. Private subnets host EC2 and RDS so they are not directly exposed to the internet.
+
+Why two Availability Zones:
+Two AZs improve availability. If one AZ has an issue, ALB and ASG can continue serving traffic from the other AZ.
+
+Why NAT Gateway:
+Private EC2 instances need outbound internet access for updates, package installation, and agents, but they should not accept inbound internet traffic. NAT Gateway provides outbound-only access.
+
+Why Internet Gateway:
+The Internet Gateway allows public subnet resources like ALB to communicate with the internet.
+
+Security group design:
+- ALB SG accepts 80/443 from the internet.
+- EC2 SG accepts app traffic only from ALB SG.
+- RDS SG accepts DB traffic only from EC2 SG.
+This creates layered security and prevents direct public access to EC2 and RDS.
+
+Why ALB:
+Application Load Balancer distributes HTTP/HTTPS traffic, performs health checks, and routes users only to healthy targets.
+
+Why Auto Scaling Group:
+ASG maintains desired EC2 capacity, replaces unhealthy instances, and can scale based on metrics like CPU.
+
+Why Launch Template:
+Launch Template defines repeatable EC2 configuration such as AMI, instance type, security group, IAM instance profile, and user data.
+
+Why RDS Multi-AZ:
+RDS Multi-AZ creates a standby database in another AZ. AWS manages synchronous replication and automatic failover, improving database availability.
+
+Why Terraform remote backend:
+Remote state in S3 keeps Terraform state centralized. Locking prevents two people from applying changes at the same time and corrupting state.
+
+Why not commit tfstate or tfvars:
+tfstate can contain sensitive data and real resource IDs. tfvars can contain secrets or environment-specific values. They should stay local or secure.
+
+Why CI/CD:
+CI/CD automates build, test, and deployment. It reduces manual deployment mistakes and gives repeatable releases.
+
+Why blue-green deployment:
+Blue-green keeps the current working environment while deploying a new version separately. Traffic shifts only after health checks pass. If the new version fails, traffic rolls back.
+
+Why CloudWatch:
+CloudWatch provides metrics, logs, alarms, and operational visibility. It can trigger scaling and rollback decisions.
+
+Common Interview Questions and Answers
+--------------------------------------
+
+Q: What is high availability?
+A: High availability means the application remains accessible even when part of the infrastructure fails. In this project, HA is achieved with multiple AZs, ALB, ASG, and RDS Multi-AZ.
+
+Q: What is the difference between public and private subnet?
+A: A public subnet has a route to an Internet Gateway. A private subnet does not expose resources directly to the internet and usually routes outbound traffic through NAT.
+
+Q: Why are EC2 instances in private subnets?
+A: To reduce attack surface. Users access the app through ALB, not directly through EC2 public IPs.
+
+Q: What is the traffic flow?
+A: User traffic goes to Route 53, then ALB in public subnets, then EC2 instances in private subnets, then the app connects to RDS in private subnets.
+
+Q: What is the role of route tables?
+A: Route tables decide where network traffic goes. Public route table sends internet-bound traffic to IGW, private route table sends internet-bound traffic to NAT Gateway.
+
+Q: What does ALB health check do?
+A: It checks whether instances are healthy on a configured path and port. Unhealthy instances stop receiving traffic.
+
+Q: What happens if one EC2 instance fails?
+A: ALB marks it unhealthy and stops sending traffic to it. ASG launches a replacement instance to maintain desired capacity.
+
+Q: What happens if one AZ fails?
+A: Because resources span two AZs, ALB can route traffic to healthy instances in the remaining AZ.
+
+Q: What is Terraform state?
+A: Terraform state maps Terraform configuration to real cloud resources. It is required for planning changes and detecting drift.
+
+Q: Why use modules?
+A: Modules separate responsibilities, improve reuse, and make the code easier to maintain. This repo uses modules for networking and IAM and should add compute, database, and CI/CD modules.
+
+Q: What is IAM least privilege?
+A: Giving each role only the permissions it needs. For example, EC2 should get only CloudWatch/SSM/app-specific permissions, not administrator access.
+
+Q: What is CodeBuild?
+A: CodeBuild runs build and test commands defined in buildspec.yml.
+
+Q: What is CodeDeploy?
+A: CodeDeploy automates deployment to EC2 or ASG and can manage blue-green deployment with ALB traffic shifting.
+
+Q: What is CodePipeline?
+A: CodePipeline orchestrates stages such as source, build, and deploy.
+
+Q: What is rollback?
+A: Rollback restores the previous healthy version when the new deployment fails health checks or triggers alarms.
+
+Q: What are important security choices in this project?
+A: Private EC2/RDS, security group chaining, encrypted RDS storage, no committed secrets, IAM least privilege, and remote state encryption.
+
+Q: What would you improve for production?
+A: Add HTTPS with ACM, WAF, multi-NAT for stronger AZ independence, stricter IAM, centralized logging, backup policies, cost alerts, secret rotation, and separate environments for dev/stage/prod.
+
+Known Improvement Points
+------------------------
+1. Current networking uses one NAT Gateway. This saves cost but if that AZ fails, private outbound traffic can be affected. Production HA usually uses one NAT Gateway per AZ.
+2. Root aws_region variable exists but should be wired into an AWS provider block.
+3. IAM is currently incomplete and needs policies/service roles.
+4. README is empty and should later contain setup instructions.
+5. No application code is visible in this repo yet, so buildspec/appspec contents depend on the actual app.
+6. Terraform state files appear locally under terraform/bootstrap and terraform/.terraform; they should not be committed.
+
+Final Demo Script
+-----------------
+1. Show Terraform module structure.
+2. Explain VPC, public/private subnets, IGW, NAT, and route tables.
+3. Explain security group traffic chain: internet -> ALB -> EC2 -> RDS.
+4. Show ALB target group healthy instances.
+5. Show ASG desired capacity and replacement after instance termination.
+6. Show RDS Multi-AZ enabled.
+7. Show CodePipeline stages.
+8. Show CodeDeploy blue-green deployment and rollback setting.
+9. Show CloudWatch alarms/logs.
+10. Summarize what failures were tested and how the system recovered.

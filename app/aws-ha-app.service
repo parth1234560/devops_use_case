@@ -1,0 +1,23 @@
+[Unit]
+Description=AWS HA Application
+After=network.target
+
+[Service]
+Type=simple
+User=awsapp
+Group=awsapp
+
+WorkingDirectory=/opt/aws-ha-app
+
+EnvironmentFile=-/etc/aws-ha-app/aws-ha-app.env
+
+ExecStart=/usr/bin/python3 /opt/aws-ha-app/app.py
+
+Restart=always
+RestartSec=5
+
+StandardOutput=append:/var/log/aws-ha-app.log
+StandardError=append:/var/log/aws-ha-app.log
+
+[Install]
+WantedBy=multi-user.target

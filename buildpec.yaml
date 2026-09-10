@@ -1,0 +1,17 @@
+version: 0.2
+
+phases:
+  build:
+    commands:
+      - echo "Packaging application"
+      - cd app
+      - chmod +x scripts/*.sh
+      - zip -r ../deployment.zip .
+
+  post_build:
+    commands:
+      - echo "Build completed successfully"
+
+artifacts:
+  files:
+    - deployment.zip
