@@ -13,7 +13,6 @@ chmod +x install
 
 ./install auto
 
-systemctl enable codedeploy-agent
 systemctl start codedeploy-agent
 
 # Create application directory
