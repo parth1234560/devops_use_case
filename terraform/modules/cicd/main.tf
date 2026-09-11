@@ -89,27 +89,12 @@ resource "aws_codedeploy_deployment_group" "app" {
   }
 }
 resource "aws_codepipeline" "app" {
-  name          = "${var.project_name}-pipeline"
-  role_arn      = var.codepipeline_role_arn
-  pipeline_type = "V2"
+  name     = "${var.project_name}-pipeline"
+  role_arn = var.codepipeline_role_arn
 
   artifact_store {
     location = var.artifact_bucket_name
     type     = "S3"
-  }
-
-  trigger {
-    provider_type = "CodeStarSourceConnection"
-
-    git_configuration {
-      source_action_name = "GitHub"
-
-      push {
-        branches {
-          includes = [var.github_branch]
-        }
-      }
-    }
   }
 
   stage {
@@ -127,7 +112,7 @@ resource "aws_codepipeline" "app" {
         ConnectionArn    = var.github_connection_arn
         FullRepositoryId = var.github_repository
         BranchName       = var.github_branch
-        DetectChanges    = "false"
+        DetectChanges    = "true"
       }
     }
   }
