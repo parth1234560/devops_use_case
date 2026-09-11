@@ -17,7 +17,6 @@ EOF
 chmod 644 /etc/aws-ha-app/aws-ha-app.env
 
 if [ -f /opt/aws-ha-app/requirements.txt ]; then
-    python3 -m pip install --upgrade pip
     python3 -m pip install -r /opt/aws-ha-app/requirements.txt
 fi
 
