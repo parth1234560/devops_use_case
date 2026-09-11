@@ -107,6 +107,15 @@ resource "aws_iam_role_policy" "ec2_secrets" {
         ]
 
         Resource = var.db_secret_arn
+      },
+      {
+        Effect = "Allow"
+
+        Action = [
+          "rds:DescribeDBInstances"
+        ]
+
+        Resource = "*"
       }
     ]
   })
