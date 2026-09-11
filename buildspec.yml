@@ -4,14 +4,13 @@ phases:
   build:
     commands:
       - echo "Packaging application"
-      - cd app
-      - chmod +x scripts/*.sh
-      - zip -r ../deployment.zip .
+      - chmod +x app/scripts/*.sh
 
   post_build:
     commands:
       - echo "Build completed successfully"
 
 artifacts:
+  base-directory: app
   files:
-    - deployment.zip
+    - "**/*"
