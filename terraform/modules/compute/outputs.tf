@@ -6,6 +6,10 @@ output "target_group_arn" {
   value = aws_lb_target_group.app.arn
 }
 
+output "target_group_name" {
+  value = aws_lb_target_group.app.name
+}
+
 output "asg_name" {
   value = aws_autoscaling_group.app.name
 }

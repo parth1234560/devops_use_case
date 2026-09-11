@@ -34,6 +34,7 @@ module "cicd" {
   codepipeline_role_arn = module.iam.codepipeline_role_arn
 
   asg_name             = module.compute.asg_name
+  target_group_name    = module.compute.target_group_name
   artifact_bucket_name = module.artifacts.bucket_name
 
 }

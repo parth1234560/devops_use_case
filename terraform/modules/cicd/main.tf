@@ -44,7 +44,7 @@ resource "aws_codedeploy_deployment_group" "app" {
   deployment_group_name = "${var.project_name}-deployment-group"
   service_role_arn      = var.codedeploy_role_arn
 
-  deployment_config_name = "CodeDeployDefault.OneAtATime"
+  deployment_config_name = "CodeDeployDefault.AllAtOnce"
 
   autoscaling_groups = [
     var.asg_name
@@ -58,10 +58,29 @@ resource "aws_codedeploy_deployment_group" "app" {
       "DEPLOYMENT_STOP_ON_ALARM"
     ]
   }
+  blue_green_deployment_config {
+    deployment_ready_option {
+      action_on_timeout = "CONTINUE_DEPLOYMENT"
+    }
+
+    green_fleet_provisioning_option {
+      action = "COPY_AUTO_SCALING_GROUP"
+    }
+
+    terminate_blue_instances_on_deployment_success {
+      action                           = "TERMINATE"
+      termination_wait_time_in_minutes = 5
+    }
+  }
+  load_balancer_info {
+    target_group_info {
+      name = var.target_group_name
+    }
+  }
 
   deployment_style {
-    deployment_type   = "IN_PLACE"
-    deployment_option = "WITHOUT_TRAFFIC_CONTROL"
+    deployment_type   = "BLUE_GREEN"
+    deployment_option = "WITH_TRAFFIC_CONTROL"
   }
 
   tags = {

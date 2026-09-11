@@ -252,6 +252,43 @@ resource "aws_iam_role_policy_attachment" "codedeploy" {
   role       = aws_iam_role.codedeploy.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
 }
+
+resource "aws_iam_role_policy" "codedeploy_blue_green" {
+  name = "${var.project_name}-codedeploy-blue-green-policy"
+  role = aws_iam_role.codedeploy.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Action = [
+          "ec2:RunInstances",
+          "ec2:CreateTags"
+        ]
+
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+
+        Action = [
+          "iam:PassRole"
+        ]
+
+        Resource = aws_iam_role.ec2.arn
+
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = "ec2.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+}
 # -------------------------
 # CodePipeline Permissions
 # -------------------------
@@ -288,7 +325,7 @@ resource "aws_iam_role_policy" "codepipeline" {
           "codebuild:StartBuild",
           "codebuild:BatchGetBuilds",
           "codebuild:GetDeploymentConfig"
-          
+
         ]
 
         Resource = "*"
