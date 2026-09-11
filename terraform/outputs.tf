@@ -39,3 +39,19 @@ output "codedeploy_role_arn" {
 output "codepipeline_role_arn" {
   value = module.iam.codepipeline_role_arn
 }
+
+output "codebuild_project_name" {
+  value = module.cicd.codebuild_project_name
+}
+
+output "codedeploy_application_name" {
+  value = module.cicd.codedeploy_application_name
+}
+
+output "codedeploy_deployment_group_name" {
+  value = module.cicd.codedeploy_deployment_group_name
+}
+
+output "codepipeline_name" {
+  value = module.cicd.codepipeline_name
+}

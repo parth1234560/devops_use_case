@@ -1,8 +1,11 @@
 #!/bin/bash
 set -euxo pipefail
 
-# Install required packages
-dnf install -y python3 ruby wget
+# Install required packages and management agents
+dnf install -y python3 ruby wget amazon-ssm-agent
+
+# Start SSM Agent so private instances can be accessed through Session Manager.
+systemctl enable --now amazon-ssm-agent
 
 # Install CodeDeploy Agent
 cd /tmp
@@ -13,7 +16,7 @@ chmod +x install
 
 ./install auto
 
-systemctl start codedeploy-agent
+systemctl enable --now codedeploy-agent
 
 # Create application directory
 mkdir -p /opt/aws-ha-app
