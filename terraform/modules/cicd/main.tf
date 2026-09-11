@@ -127,7 +127,7 @@ resource "aws_codepipeline" "app" {
         ConnectionArn    = var.github_connection_arn
         FullRepositoryId = var.github_repository
         BranchName       = var.github_branch
-        DetectChanges    = "true"
+        DetectChanges    = "false"
       }
     }
   }
