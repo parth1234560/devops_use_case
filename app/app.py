@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
@@ -15,6 +15,7 @@ LOG_FILE = os.getenv("LOG_FILE", "/var/log/aws-ha-app.log")
 AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
 DB_SECRET_ID = os.getenv("DB_SECRET_ID", "aws-ha-app/database")
 DB_INSTANCE_IDENTIFIER = os.getenv("DB_INSTANCE_IDENTIFIER", "aws-ha-app-mysql")
+INDIA_TZ = timezone(timedelta(hours=5, minutes=30))
 
 logging.basicConfig(
     filename=LOG_FILE,
@@ -57,12 +58,12 @@ def get_db_config():
 def db_connection():
     conn = pymysql.connect(**get_db_config())
     with conn.cursor() as cursor:
-        cursor.execute("SET time_zone = '+00:00'")
+        cursor.execute("SET time_zone = '+05:30'")
     return conn
 
 
-def utc_now():
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+def india_now():
+    return datetime.now(INDIA_TZ).replace(tzinfo=None)
 
 
 def serialize_todo(todo):
@@ -73,7 +74,7 @@ def serialize_todo(todo):
     for field in ("created_at", "updated_at"):
         value = serialized.get(field)
         if isinstance(value, datetime):
-            serialized[field] = value.replace(tzinfo=timezone.utc).isoformat()
+            serialized[field] = value.replace(tzinfo=INDIA_TZ).isoformat()
     return serialized
 
 
@@ -185,7 +186,7 @@ def create_todo(payload):
 
     with db_connection() as conn:
         with conn.cursor() as cursor:
-            now = utc_now()
+            now = india_now()
             cursor.execute(
                 """
                 INSERT INTO todos (title, notes, created_at, updated_at)
@@ -229,7 +230,7 @@ def update_todo(todo_id, payload):
         raise ValueError("No supported fields supplied")
 
     fields.append("updated_at = %s")
-    values.append(utc_now())
+    values.append(india_now())
     values.append(todo_id)
     with db_connection() as conn:
         with conn.cursor() as cursor:
@@ -697,6 +698,6 @@ class TodoHandler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     init_database()
-    logging.info("Starting todo application on port %s at %s", PORT, datetime.utcnow())
+    logging.info("Starting todo application on port %s at %s", PORT, datetime.now(INDIA_TZ))
     server = ThreadingHTTPServer(("0.0.0.0", PORT), TodoHandler)
     server.serve_forever()
