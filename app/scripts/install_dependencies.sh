@@ -16,8 +16,3 @@ chown -R awsapp:awsapp /opt/aws-ha-app
 chown awsapp:awsapp /var/log/aws-ha-app.log
 
 chmod 755 /opt/aws-ha-app
-
-if [ -f /opt/aws-ha-app/requirements.txt ]; then
-    python3 -m pip install --upgrade pip
-    python3 -m pip install -r /opt/aws-ha-app/requirements.txt
-fi
