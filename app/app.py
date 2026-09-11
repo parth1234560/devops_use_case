@@ -257,7 +257,7 @@ def delete_todo(todo_id):
 
 
 INDEX_HTML = """<!doctype html>
-<html lang="en">
+<html >
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -489,7 +489,7 @@ INDEX_HTML = """<!doctype html>
         <p class="error" id="formError"></p>
         <form id="todoForm">
           <label for="title">Task</label>
-          <input id="title" name="title" maxlength="255" autocomplete="off" placeholder="Ship the next demo" required />
+          <input id="title" name="title" maxlength="255" autocomplete="off" placeholder="Ship the auto-deploy test" required />
           <label for="notes">Notes</label>
           <textarea id="notes" name="notes" placeholder="Add context, links, or acceptance criteria"></textarea>
           <button class="submit" type="submit">Save task</button>
