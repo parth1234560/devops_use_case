@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
@@ -55,7 +55,44 @@ def get_db_config():
 
 
 def db_connection():
-    return pymysql.connect(**get_db_config())
+    conn = pymysql.connect(**get_db_config())
+    with conn.cursor() as cursor:
+        cursor.execute("SET time_zone = '+00:00'")
+    return conn
+
+
+def utc_now():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def serialize_todo(todo):
+    if not todo:
+        return todo
+
+    serialized = dict(todo)
+    for field in ("created_at", "updated_at"):
+        value = serialized.get(field)
+        if isinstance(value, datetime):
+            serialized[field] = value.replace(tzinfo=timezone.utc).isoformat()
+    return serialized
+
+
+def serialize_todos(todos):
+    return [serialize_todo(todo) for todo in todos]
+
+
+def column_exists(cursor, column_name):
+    cursor.execute(
+        """
+        SELECT COUNT(*) AS count
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = 'todos'
+          AND column_name = %s
+        """,
+        (column_name,),
+    )
+    return cursor.fetchone()["count"] > 0
 
 
 def init_database():
@@ -77,6 +114,22 @@ def init_database():
                         )
                         """
                     )
+                    if not column_exists(cursor, "created_at"):
+                        cursor.execute(
+                            """
+                            ALTER TABLE todos
+                            ADD COLUMN created_at TIMESTAMP NOT NULL
+                                DEFAULT CURRENT_TIMESTAMP
+                            """
+                        )
+                    if not column_exists(cursor, "updated_at"):
+                        cursor.execute(
+                            """
+                            ALTER TABLE todos
+                            ADD COLUMN updated_at TIMESTAMP NOT NULL
+                                DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                            """
+                        )
             logging.info("Database initialized")
             return
         except Exception as exc:  # noqa: BLE001 - startup retry should log any failure
@@ -121,7 +174,7 @@ def list_todos():
                 ORDER BY completed ASC, created_at DESC
                 """
             )
-            return cursor.fetchall()
+            return serialize_todos(cursor.fetchall())
 
 
 def create_todo(payload):
@@ -132,9 +185,13 @@ def create_todo(payload):
 
     with db_connection() as conn:
         with conn.cursor() as cursor:
+            now = utc_now()
             cursor.execute(
-                "INSERT INTO todos (title, notes) VALUES (%s, %s)",
-                (title, notes or None),
+                """
+                INSERT INTO todos (title, notes, created_at, updated_at)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (title, notes or None, now, now),
             )
             todo_id = cursor.lastrowid
             cursor.execute(
@@ -145,7 +202,7 @@ def create_todo(payload):
                 """,
                 (todo_id,),
             )
-            return cursor.fetchone()
+            return serialize_todo(cursor.fetchone())
 
 
 def update_todo(todo_id, payload):
@@ -171,6 +228,8 @@ def update_todo(todo_id, payload):
     if not fields:
         raise ValueError("No supported fields supplied")
 
+    fields.append("updated_at = %s")
+    values.append(utc_now())
     values.append(todo_id)
     with db_connection() as conn:
         with conn.cursor() as cursor:
@@ -186,7 +245,7 @@ def update_todo(todo_id, payload):
                 """,
                 (todo_id,),
             )
-            return cursor.fetchone()
+            return serialize_todo(cursor.fetchone())
 
 
 def delete_todo(todo_id):
@@ -494,7 +553,7 @@ INDEX_HTML = """<!doctype html>
           <div>
             <h3>${escapeHtml(todo.title)}</h3>
             ${todo.notes ? `<p>${escapeHtml(todo.notes)}</p>` : ""}
-            <small>Updated ${formatDate(todo.updated_at)}</small>
+            <small>Added ${formatDate(todo.created_at)}</small>
           </div>
           <button class="delete" data-action="delete" data-id="${todo.id}" aria-label="Delete ${todo.title}">Delete</button>
         </article>
